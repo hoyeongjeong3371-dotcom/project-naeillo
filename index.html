@@ -115,7 +115,7 @@ function App(){
   const[loginError,setLoginError]=useState("");
   const[loginLoading,setLoginLoading]=useState(false);
   const[gasUrl,setGasUrl]=useState("");
-  const[gasInput,setGasInput]=useState("");
+  const[gasInput,setGasInput]=useState("https://script.google.com/macros/s/AKfycbzxlms-9cIrrQhS_9SK-Q4LW5m-s7uNSaTFT6bruuzMF686sM51pSg08BrylJMIm4Ls/exec");
   const[page,setPage]=useState("list");
   const[rawData,setRawData]=useState("");
   const[participants,setParticipants]=useState(()=>BUILT_IN.map((r,i)=>processRow(r,i)));
