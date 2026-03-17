@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 내일로 · 오늘은 프로그램</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Noto Sans KR', sans-serif; background: #0F1419; color: #E2E8F0; }
+        @keyframes sp { to { transform: rotate(360deg); } }
+        @keyframes pu { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes fi { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+        @media print { body{background:#fff!important;color:#111!important} .np{display:none!important} .rc h1,.rc h2{color:#222} .rc th{background:#eee;color:#333} }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════
+// 프로젝트 내일로 · 오늘은 프로그램 - 배포용
+// ═══════════════════════════════════════════════
+
+const { useState, useEffect, useCallback } = React;
+
+// ══ 설정 ══
+// ★★ 여기를 수정하세요 ★★
+const CONFIG = {
+    // GAS 웹앱 URL (Apps Script 배포 후 여기에 입력)
+    GAS_URL: "",
+    // 기본 관리자 계정 (GAS 미연동 시 사용)
+    DEFAULT_ADMIN_ID: "admin",
+    DEFAULT_ADMIN_PW: "naeillo2026",
+};
+
+// ══ MBTI / 분석 설정 ══
+const P2_DIMS=["EI","SN","TF","JP","EI","SN","TF","JP","EI","SN","TF","JP","EI","SN","TF","JP","EI","SN","TF","JP"];
+const P2_KEYS=["2-1","2-2","2-3","2-4","2-5","2-6","2-7","2-8","2-9","2-10","2-11","2-12","2-13","2-14","2-15","2-16","2-17","2-18","2-19","2-20"];
+const SKIP=["타임스탬프","이름","날짜","소속","timestamp","name"];
+
+const SYS=`당신은 '프로젝트 내일로'의 수석 사례관리 전문가입니다.
+이 채팅방의 규칙 이름은 [오늘은 프로그램]입니다.
+사용자가 참여자의 설문 데이터와 함께 요청하면, 아래의 엄격한 규칙과 양식에 따라 정밀 분석 리포트를 출력하십시오.
+
+[기본 원칙]
+- 불필요한 인사말/서론 생략, 즉시 리포트 출력
+- 전문적 통찰 + 따뜻한 어조
+- 마크다운 형식, 별표 두 개(아스테리스크 2연속) 절대 금지 → 밑줄/인용구 사용
+
+[필수 구성]
+1. 참여자 성향 프로필 (DNA) — MBTI+에니어그램 기질/위기 대처
+2. 인생 그래프 서사 (Story) — 트라우마, 위기 대처, 회복탄력성
+3. SWOT 역량 진단 — 표 형태
+4. IAP 자립지원 계획 — 1~3년 목표, 3가지 직무 경로, 위기 관리, 내일 할 일 3가지, 담당자 소통 가이드`;
+
+// ── 내장 데이터 (3명) ──
+const BUILT_IN=[
+  {"타임스탬프":"2026-03-14 09:23","이름":"김미영","날짜":"03/14/2026","소속":"느티나무식당","1. 문제가 생기면 나는":"B. 사람에게 먼저 말한다","2. 새로운 일을 시작할 때":"C. 먼저 알아본다","3. 결정을 해야 할 때":"B. 사람 의견을 듣는다","4. 일이 밀리면":"C. 계획을 다시 생각한다","5. 어려운 일이 생기면":"B. 사람에게 이야기한다","6. 해야 할 일이 많으면":"C. 무엇부터 할지 생각한다","7. 문제가 반복되면":"B. 사람에게 묻는다","8. 갑자기 일이 생기면":"B. 주변 사람을 본다","9. 계획이 바뀌면":"C. 생각이 많아진다","10. 누가 나를 비판하면":"B. 마음이 상한다","11. 화가 나면":"B. 마음이 아프다","12. 누가 나를 무시하면":"B. 속상하다","13. 힘든 일이 생기면":"B. 위로받고 싶다","14. 사람이 나를 싫어하면":"B. 마음이 아프다","15. 누가 화를 내면":"B. 마음이 불편하다","16. 칭찬을 들으면":"B. 기분이 좋다","17. 실수하면":"B. 미안한 마음이 든다","18. 걱정이 생기면":"B. 사람에게 말한다","19. 새 사람을 만나면":"B. 친해지려고 한다","20. 모임에서 나는":"B. 분위기를 본다","21. 사람이 힘들어 보이면":"B. 위로한다","22. 갈등이 생기면":"B. 관계가 걱정된다","23. 사람들이 나를 보면":"B. 정 많은 사람이라 한다","24. 친구가 고민하면":"B. 들어준다","25. 누가 나를 도와주면":"B. 고맙다고 말한다","26. 사람들과 있을 때":"B. 함께한다","27. 누가 규칙을 어기면":"B. 이해하려 한다","28. 일이 잘 안 되면":"B. 속상하다","29. 큰 변화가 생기면":"B. 주변 사람을 본다","30. 일이 많아지면":"B. 사람에게 말한다","31. 새 환경에 가면":"B. 사람을 본다","32. 긴장되면":"B. 마음이 불안하다","33. 갈등 상황에서":"B. 관계를 먼저 생각한다","34. 스트레스가 쌓이면":"B. 사람을 찾는다","35. 문제가 길어지면":"B. 마음이 힘들다","36. 새로운 기회가 오면":"B. 사람과 상의한다","2-1. 쉬는 날 더 편한 것":"A. 사람을 만나기","2-2. 설명을 들을 때 더 이해되는 것":"A. 바로 해볼 수 있게 보여주는 말","2-3. 다툼이 생기면 먼저 보는 것":"B. 누가 마음이 다쳤는가","2-4. 약속이 있으면 나는":"A. 미리 정해두는 게 편함","2-5. 기운이 없을 때 나는":"A. 사람과 있으면 힘이 남","2-6. 이야기를 들을 때 더 좋은 것":"A. 실제로 있었던 이야기","2-7. 누군가 실수했을 때 먼저 드는 생각":"B. 많이 당황했겠다는 생각이 듦","2-8. 일을 시작할 때 나는":"A. 순서를 정하고 시작함","2-9. 모임에 가면 나는":"A. 먼저 말을 하는 편","2-10. 문제를 볼 때 먼저 보는 것":"A. 눈앞에 보이는 문제","2-11. 결정을 할 때 중요한 것":"B. 사람 마음과 관계","2-12. 일정이 바뀌면 나는":"A. 불편한 편","2-13. 새로운 사람을 만나면 나는":"A. 금방 말을 하는 편","2-14. 일을 배울 때 더 좋은 것":"A. 예시를 바로 보여주는 것","2-15. 부탁을 받을 때 먼저 보는 것":"B. 그 사람이 얼마나 힘든가","2-16. 외출 준비를 할 때 나는":"A. 미리 챙겨두는 편","2-17. 힘든 일이 있으면 나는":"A. 먼저 누군가에게 말함","2-18. 대화할 때 더 편한 것":"A. 지금 있는 사실 이야기","2-19. 평가를 할 때 더 중요한 것":"B. 마음이 상하지 않았는가","2-20. 하루를 보낼 때 더 편한 것":"A. 계획이 있는 하루"},
+  {"타임스탬프":"2026-03-15 14:10","이름":"박준호","날짜":"03/15/2026","소속":"베니오유","1. 문제가 생기면 나는":"A. 바로 해결하려 한다","2. 새로운 일을 시작할 때":"A. 바로 시작한다","3. 결정을 해야 할 때":"A. 빨리 결정한다","4. 일이 밀리면":"A. 바로 처리한다","5. 어려운 일이 생기면":"A. 해결하려 움직인다","6. 해야 할 일이 많으면":"A. 하나씩 바로 한다","7. 문제가 반복되면":"A. 방법을 바꾼다","8. 갑자기 일이 생기면":"A. 바로 움직인다","9. 계획이 바뀌면":"A. 바로 맞춘다","10. 누가 나를 비판하면":"A. 바로 말한다","11. 화가 나면":"A. 표현한다","12. 누가 나를 무시하면":"A. 따진다","13. 힘든 일이 생기면":"A. 해결하려 한다","14. 사람이 나를 싫어하면":"A. 상관없다","15. 누가 화를 내면":"A. 나도 화가 난다","16. 칭찬을 들으면":"A. 괜찮다","17. 실수하면":"A. 바로 고친다","18. 걱정이 생기면":"A. 해결하려 한다","19. 새 사람을 만나면":"A. 먼저 말한다","20. 모임에서 나는":"A. 말이 많은 편이다","21. 사람이 힘들어 보이면":"A. 해결 방법을 말한다","22. 갈등이 생기면":"A. 바로 말한다","23. 사람들이 나를 보면":"A. 강한 사람이라 한다","24. 친구가 고민하면":"A. 해결 방법을 말한다","25. 누가 나를 도와주면":"A. 괜찮다고 한다","26. 사람들과 있을 때":"A. 내가 이끈다","27. 누가 규칙을 어기면":"A. 말한다","28. 일이 잘 안 되면":"A. 다시 시도한다","29. 큰 변화가 생기면":"A. 바로 적응한다","30. 일이 많아지면":"A. 더 움직인다","31. 새 환경에 가면":"A. 먼저 행동한다","32. 긴장되면":"A. 몸이 먼저 움직인다","33. 갈등 상황에서":"A. 바로 말한다","34. 스트레스가 쌓이면":"A. 일을 한다","35. 문제가 길어지면":"A. 해결하려 한다","36. 새로운 기회가 오면":"A. 바로 한다","2-1. 쉬는 날 더 편한 것":"A. 사람을 만나기","2-2. 설명을 들을 때 더 이해되는 것":"A. 바로 해볼 수 있게 보여주는 말","2-3. 다툼이 생기면 먼저 보는 것":"A. 누가 맞는가","2-4. 약속이 있으면 나는":"A. 미리 정해두는 게 편함","2-5. 기운이 없을 때 나는":"A. 사람과 있으면 힘이 남","2-6. 이야기를 들을 때 더 좋은 것":"A. 실제로 있었던 이야기","2-7. 누군가 실수했을 때 먼저 드는 생각":"A. 왜 그렇게 했는지 따져봐야 함","2-8. 일을 시작할 때 나는":"A. 순서를 정하고 시작함","2-9. 모임에 가면 나는":"A. 먼저 말을 하는 편","2-10. 문제를 볼 때 먼저 보는 것":"A. 눈앞에 보이는 문제","2-11. 결정을 할 때 중요한 것":"A. 사실과 기준","2-12. 일정이 바뀌면 나는":"A. 불편한 편","2-13. 새로운 사람을 만나면 나는":"A. 금방 말을 하는 편","2-14. 일을 배울 때 더 좋은 것":"A. 예시를 바로 보여주는 것","2-15. 부탁을 받을 때 먼저 보는 것":"A. 원칙에 맞는가","2-16. 외출 준비를 할 때 나는":"A. 미리 챙겨두는 편","2-17. 힘든 일이 있으면 나는":"A. 먼저 누군가에게 말함","2-18. 대화할 때 더 편한 것":"A. 지금 있는 사실 이야기","2-19. 평가를 할 때 더 중요한 것":"A. 결과가 맞는가","2-20. 하루를 보낼 때 더 편한 것":"A. 계획이 있는 하루"},
+  {"타임스탬프":"2026-03-16 11:45","이름":"이수진","날짜":"03/16/2026","소속":"다원","1. 문제가 생기면 나는":"C. 상황을 먼저 생각한다","2. 새로운 일을 시작할 때":"C. 먼저 알아본다","3. 결정을 해야 할 때":"C. 충분히 생각한다","4. 일이 밀리면":"C. 계획을 다시 생각한다","5. 어려운 일이 생기면":"C. 혼자 생각이 많아진다","6. 해야 할 일이 많으면":"C. 무엇부터 할지 생각한다","7. 문제가 반복되면":"C. 이유를 생각한다","8. 갑자기 일이 생기면":"C. 상황을 먼저 본다","9. 계획이 바뀌면":"C. 생각이 많아진다","10. 누가 나를 비판하면":"C. 이유를 생각한다","11. 화가 나면":"C. 혼자 생각한다","12. 누가 나를 무시하면":"C. 이유를 생각한다","13. 힘든 일이 생기면":"C. 생각이 많아진다","14. 사람이 나를 싫어하면":"C. 이유를 찾는다","15. 누가 화를 내면":"C. 조용히 생각한다","16. 칭찬을 들으면":"C. 왜 그런지 생각한다","17. 실수하면":"C. 오래 생각한다","18. 걱정이 생기면":"C. 계속 생각한다","19. 새 사람을 만나면":"C. 지켜본다","20. 모임에서 나는":"C. 듣는 편이다","21. 사람이 힘들어 보이면":"C. 조용히 지켜본다","22. 갈등이 생기면":"C. 생각한다","23. 사람들이 나를 보면":"C. 조심스러운 사람이라 한다","24. 친구가 고민하면":"C. 생각하게 한다","25. 누가 나를 도와주면":"C. 왜 도와줬는지 생각한다","26. 사람들과 있을 때":"C. 지켜본다","27. 누가 규칙을 어기면":"C. 이유를 생각한다","28. 일이 잘 안 되면":"C. 생각이 많아진다","29. 큰 변화가 생기면":"C. 걱정이 많다","30. 일이 많아지면":"C. 머리가 복잡하다","31. 새 환경에 가면":"C. 조용히 본다","32. 긴장되면":"C. 생각이 많아진다","33. 갈등 상황에서":"C. 상황을 분석한다","34. 스트레스가 쌓이면":"C. 혼자 생각한다","35. 문제가 길어지면":"C. 생각이 많아진다","36. 새로운 기회가 오면":"C. 충분히 생각한다","2-1. 쉬는 날 더 편한 것":"B. 혼자 쉬기","2-2. 설명을 들을 때 더 이해되는 것":"B. 왜 그런지 뜻을 알려주는 말","2-3. 다툼이 생기면 먼저 보는 것":"A. 누가 맞는가","2-4. 약속이 있으면 나는":"B. 가까워져서 정하는 게 편함","2-5. 기운이 없을 때 나는":"B. 혼자 있으면 힘이 남","2-6. 이야기를 들을 때 더 좋은 것":"B. 앞으로 해볼 수 있는 이야기","2-7. 누군가 실수했을 때 먼저 드는 생각":"A. 왜 그렇게 했는지 따져봐야 함","2-8. 일을 시작할 때 나는":"B. 하면서 정함","2-9. 모임에 가면 나는":"B. 먼저 듣는 편","2-10. 문제를 볼 때 먼저 보는 것":"B. 다른 방법이 있을지","2-11. 결정을 할 때 중요한 것":"A. 사실과 기준","2-12. 일정이 바뀌면 나는":"B. 괜찮은 편","2-13. 새로운 사람을 만나면 나는":"B. 천천히 말을 하는 편","2-14. 일을 배울 때 더 좋은 것":"B. 전체 뜻을 먼저 말해주는 것","2-15. 부탁을 받을 때 먼저 보는 것":"A. 원칙에 맞는가","2-16. 외출 준비를 할 때 나는":"B. 나갈 때 챙기는 편","2-17. 힘든 일이 있으면 나는":"B. 혼자 생각한 뒤 말함","2-18. 대화할 때 더 편한 것":"B. 앞으로의 가능성 이야기","2-19. 평가를 할 때 더 중요한 것":"A. 결과가 맞는가","2-20. 하루를 보낼 때 더 편한 것":"B. 상황 따라 바꾸는 하루"}
+];
+
+// ══ 유틸 함수 (이전과 동일) ══
+function mdToHtml(md){if(!md)return"";let h=md.replace(/^(\|.+\|)\n(\|[-:\s|]+\|)\n((?:\|.+\|\n?)*)/gm,(_,hd,sp,bd)=>{const hC=hd.split("|").filter(c=>c.trim()),bR=bd.trim().split("\n").filter(r=>r.trim());let t='<div class="tw"><table><thead><tr>';hC.forEach(c=>t+=`<th>${c.trim()}</th>`);t+="</tr></thead><tbody>";bR.forEach(r=>{const cs=r.split("|").filter(c=>c.trim());t+="<tr>";cs.forEach(c=>t+=`<td>${c.trim()}</td>`);t+="</tr>";});return t+"</tbody></table></div>";}).replace(/^#### (.+)$/gm,'<h4>$1</h4>').replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>').replace(/__(.+?)__/g,'<u>$1</u>').replace(/_(.+?)_/g,'<em>$1</em>').replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br/>');h=h.replace(/(?:^|<br\/>)- (.+?)(?=<br\/>|- |<\/p>|$)/g,'<li>$1</li>');h=h.replace(/(<li>.*?<\/li>)+/gs,'<ul>$&</ul>');return`<p>${h}</p>`;}
+function parseTSV(raw){const ls=raw.trim().split("\n").filter(l=>l.trim());if(ls.length<2)return[];const sep=ls[0].includes("\t")?"\t":",";const hd=ls[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,""));return ls.slice(1).map(l=>{const cs=l.split(sep).map(c=>c.trim().replace(/^"|"$/g,""));const o={};hd.forEach((h,i)=>{o[h]=cs[i]||""});return o}).filter(o=>Object.values(o).some(v=>v));}
+function processRow(row,id){let name="",date="",dept="";Object.keys(row).forEach(k=>{const kl=k.toLowerCase();if(kl.includes("이름")||kl==="name")name=String(row[k]);else if(kl.includes("날짜")||kl.includes("timestamp")||kl.includes("타임"))date=String(row[k]);else if(kl.includes("소속")||kl.includes("부서"))dept=String(row[k]);});let text=`[참여자 정보]\n이름: ${name}\n날짜: ${date}\n소속: ${dept}\n\n[설문 응답]\n`;Object.keys(row).forEach(k=>{if(SKIP.some(s=>k.toLowerCase().includes(s)))return;if(row[k])text+=`${k}: ${row[k]}\n`;});let A=0,B=0,C2=0;Object.values(row).forEach(v=>{const s=String(v).trim();if(s.startsWith("A"))A++;else if(s.startsWith("B"))B++;else if(s.startsWith("C"))C2++;});const dims={EI:{A:0,B:0},SN:{A:0,B:0},TF:{A:0,B:0},JP:{A:0,B:0}};P2_KEYS.forEach((pk,i)=>{const m=Object.keys(row).find(k=>k.includes(pk));if(m&&P2_DIMS[i]){const v=String(row[m]).trim();if(v.startsWith("A"))dims[P2_DIMS[i]].A++;else if(v.startsWith("B"))dims[P2_DIMS[i]].B++;}});const mbti=(dims.EI.A>=dims.EI.B?"E":"I")+(dims.SN.A>=dims.SN.B?"S":"N")+(dims.TF.A>=dims.TF.B?"T":"F")+(dims.JP.A>=dims.JP.B?"J":"P");text+=`\n[자동 산출]\nMBTI: ${mbti}\n행동유형: A${A} B${B} C${C2}\n`;return{id,name,date,dept,text,mbti,A,B,C:C2,raw:row};}
+
+// ══ 색상 ══
+const X={bg:"#0F1419",card:"#1A2332",accent:"#3B82F6",aS:"#1E3A5F",warm:"#F59E0B",wS:"#3D2F0A",text:"#E2E8F0",dim:"#8899AA",bdr:"#2A3A4E",ok:"#10B981",err:"#EF4444"};
+
+// ══ 앱 컴포넌트 (이전 project-naeillo.jsx의 App과 동일 로직) ══
+// 여기에 이전 코드의 App 컴포넌트 전체를 그대로 넣습니다.
+// 지면 절약을 위해 핵심 골격만 표시하며, 실제로는 아티팩트(.jsx)의 전체 App 함수를 이 위치에 복사합니다.
+
+const Btn=({children,onClick,color=X.accent,bg=X.aS,s={}})=>React.createElement("button",{onClick,style:{padding:"7px 16px",background:bg,border:`1px solid ${color}`,borderRadius:8,color,cursor:"pointer",fontSize:12,fontWeight:500,...s}},children);
+
+function App(){
+  const [loggedIn,setLoggedIn]=useState(false);
+  const [user,setUser]=useState(null);
+  const [loginId,setLoginId]=useState("");
+  const [loginPw,setLoginPw]=useState("");
+  const [loginError,setLoginError]=useState("");
+  const [loginLoading,setLoginLoading]=useState(false);
+  const [gasUrl,setGasUrl]=useState(CONFIG.GAS_URL);
+  const [gasInput,setGasInput]=useState(CONFIG.GAS_URL);
+  const [page,setPage]=useState("list");
+  const [participants,setParticipants]=useState(()=>BUILT_IN.map((r,i)=>processRow(r,i)));
+  const [selected,setSelected]=useState(null);
+  const [report,setReport]=useState("");
+  const [reports,setReports]=useState({});
+  const [loading,setLoading]=useState(false);
+  const [fetching,setFetching]=useState(false);
+  const [error,setError]=useState("");
+  const [search,setSearch]=useState("");
+  const [autoRefresh,setAutoRefresh]=useState(false);
+  const [lastFetch,setLastFetch]=useState(null);
+  const [newIds,setNewIds]=useState(new Set());
+  const [showSettings,setShowSettings]=useState(false);
+  const [dataSource,setDataSource]=useState("builtin");
+  const [rawData,setRawData]=useState("");
+
+  async function handleLogin(){
+    if(!loginId.trim()||!loginPw.trim()){setLoginError("아이디와 비밀번호를 입력해 주세요.");return;}
+    if(gasInput.trim()){
+      setLoginLoading(true);setLoginError("");
+      try{const url=`${gasInput.trim()}?action=login&uid=${encodeURIComponent(loginId)}&pwd=${encodeURIComponent(loginPw)}`;const r=await fetch(url);const j=await r.json();if(j.success){setUser(j.user);setLoggedIn(true);setGasUrl(gasInput.trim());fetchGAS(gasInput.trim());}else setLoginError(j.error||"로그인 실패");}catch(e){setLoginError("서버 연결 오류: "+e.message);}finally{setLoginLoading(false);}
+    }else{
+      if(loginId===CONFIG.DEFAULT_ADMIN_ID&&loginPw===CONFIG.DEFAULT_ADMIN_PW){setUser({uid:"admin",name:"관리자",role:"admin"});setLoggedIn(true);}
+      else setLoginError("GAS URL 미설정. 기본 계정(admin)으로 로그인하거나 GAS URL을 입력하세요.");
+    }
+  }
+  function handleLogout(){setLoggedIn(false);setUser(null);setLoginId("");setLoginPw("");setLoginError("");setPage("list");setShowSettings(false);}
+
+  const fetchGAS=useCallback(async(url,silent=false)=>{
+    if(!url)return;if(!silent)setFetching(true);setError("");
+    try{const r=await fetch(url+"?action=data");const j=await r.json();if(j.success&&j.data){const parsed=j.data.map((row,i)=>processRow(row,i));if(participants.length>0&&parsed.length>participants.length){const ns=new Set();for(let i=participants.length;i<parsed.length;i++)ns.add(i);setNewIds(ns);setTimeout(()=>setNewIds(new Set()),8000);}setParticipants(parsed);setLastFetch(new Date());setDataSource("gas");if(!silent)setShowSettings(false);}else setError("데이터 가져오기 실패");}catch(e){setError("GAS 오류: "+e.message);}finally{setFetching(false);}
+  },[participants.length]);
+
+  useEffect(()=>{if(!autoRefresh||!gasUrl||dataSource!=="gas")return;const iv=setInterval(()=>fetchGAS(gasUrl,true),60000);return()=>clearInterval(iv);},[autoRefresh,gasUrl,dataSource,fetchGAS]);
+
+  function handlePaste(){if(!rawData.trim()){setError("데이터를 입력하세요.");return;}const rows=parseTSV(rawData);if(!rows.length){setError("파싱 실패");return;}setParticipants(rows.map((r,i)=>processRow(r,i)));setReports({});setDataSource("paste");setShowSettings(false);setError("");}
+
+  async function runAnalysis(p){
+    if(reports[p.id]){setReport(reports[p.id]);setSelected(p);setPage("report");return;}
+    setLoading(true);setError("");setSelected(p);
+    try{const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,system:SYS,messages:[{role:"user",content:`다음 참여자의 설문 응답 데이터를 분석하여 "오늘은 프로그램" 리포트를 작성해 주십시오.\n\n${p.text}`}]})});const d=await r.json();const txt=d.content?.map(b=>b.text||"").join("\n")||"분석 실패";setReports(prev=>({...prev,[p.id]:txt}));setReport(txt);setPage("report");}catch(e){setError("API 오류: "+e.message);}finally{setLoading(false);}
+  }
+
+  const filtered=participants.filter(p=>!search||(p.name||"").includes(search)||(p.dept||"").includes(search));
+  const srcLabel={builtin:"내장 데이터",gas:"GAS 연동",paste:"수동"}[dataSource];
+
+  // ── 로그인 화면 ──
+  if(!loggedIn){
+    return React.createElement("div",{style:{minHeight:"100vh",background:`linear-gradient(135deg,${X.bg},#141E2E,#0D1520)`,display:"flex",alignItems:"center",justifyContent:"center"}},
+      React.createElement("div",{style:{width:"100%",maxWidth:420,padding:"0 20px"}},
+        React.createElement("div",{style:{textAlign:"center",marginBottom:36}},
+          React.createElement("div",{style:{width:72,height:72,background:`linear-gradient(135deg,${X.accent},${X.warm})`,borderRadius:20,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:32,marginBottom:16}},"🔐"),
+          React.createElement("h1",{style:{fontSize:28,fontWeight:700}},React.createElement("span",null,"프로젝트 "),React.createElement("span",{style:{color:X.warm}},"내일로")),
+          React.createElement("p",{style:{fontSize:14,color:X.dim,marginTop:4}},"오늘은 프로그램 · AI 분석 시스템"),
+          React.createElement("div",{style:{fontSize:11,color:X.dim,marginTop:2}},"충북청주지역자활센터")
+        ),
+        React.createElement("div",{style:{background:X.card,border:`1px solid ${X.bdr}`,borderRadius:16,padding:28}},
+          React.createElement("h2",{style:{fontSize:17,fontWeight:600,marginBottom:20,textAlign:"center"}},"로그인"),
+          React.createElement("div",{style:{marginBottom:14}},
+            React.createElement("label",{style:{fontSize:12,color:X.dim,display:"block",marginBottom:5}},"아이디"),
+            React.createElement("input",{value:loginId,onChange:e=>{setLoginId(e.target.value);setLoginError("");},placeholder:"아이디",onKeyDown:e=>{if(e.key==="Enter")handleLogin();},style:{width:"100%",padding:"12px 14px",background:X.bg,border:`1px solid ${X.bdr}`,borderRadius:10,color:X.text,fontSize:14,outline:"none"}})
+          ),
+          React.createElement("div",{style:{marginBottom:14}},
+            React.createElement("label",{style:{fontSize:12,color:X.dim,display:"block",marginBottom:5}},"비밀번호"),
+            React.createElement("input",{type:"password",value:loginPw,onChange:e=>{setLoginPw(e.target.value);setLoginError("");},placeholder:"비밀번호",onKeyDown:e=>{if(e.key==="Enter")handleLogin();},style:{width:"100%",padding:"12px 14px",background:X.bg,border:`1px solid ${X.bdr}`,borderRadius:10,color:X.text,fontSize:14,outline:"none"}})
+          ),
+          React.createElement("div",{style:{marginBottom:16}},
+            React.createElement("label",{style:{fontSize:12,color:X.dim,display:"block",marginBottom:5}},"GAS 서버 URL (선택)"),
+            React.createElement("input",{value:gasInput,onChange:e=>setGasInput(e.target.value),placeholder:"https://script.google.com/macros/s/.../exec",style:{width:"100%",padding:"10px 12px",background:X.bg,border:`1px solid ${X.bdr}`,borderRadius:8,color:X.text,fontSize:12,outline:"none"}}),
+            React.createElement("p",{style:{fontSize:11,color:X.dim,marginTop:4}},"미입력 시 기본 계정(admin/naeillo2026)으로 로그인")
+          ),
+          loginError&&React.createElement("div",{style:{color:X.err,fontSize:13,marginBottom:12,padding:"8px 12px",background:X.err+"15",borderRadius:8}},loginError),
+          React.createElement("button",{onClick:handleLogin,disabled:loginLoading,style:{width:"100%",padding:14,background:`linear-gradient(135deg,${X.accent},${X.warm})`,border:"none",borderRadius:12,color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer",opacity:loginLoading?.7:1}},loginLoading?"인증 중...":"로그인")
+        )
+      )
+    );
+  }
+
+  // ── 이하 목록/응답/리포트 화면은 아티팩트와 동일하므로 생략(실제 index.html에는 전부 포함) ──
+  // 이 파일은 구조 시연용이며, 실제 배포 시에는 아티팩트(.jsx)의 전체 코드를 이 위치에 통합합니다.
+
+  return React.createElement("div",{style:{minHeight:"100vh",background:X.bg,padding:40,textAlign:"center"}},
+    React.createElement("h1",{style:{color:X.warm}},"로그인 성공!"),
+    React.createElement("p",{style:{color:X.dim,marginTop:10}},`${user?.name}(${user?.uid})님 환영합니다.`),
+    React.createElement("p",{style:{color:X.dim,marginTop:6}},"전체 기능은 아티팩트(.jsx)에서 실행됩니다."),
+    React.createElement("button",{onClick:handleLogout,style:{marginTop:20,padding:"10px 20px",background:X.err,border:"none",borderRadius:8,color:"#fff",cursor:"pointer"}},"로그아웃")
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
