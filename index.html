@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>프로젝트 내일로 · 오늘은 프로그램</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:#0F1419;color:#E2E8F0}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes pu{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes fi{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+@media print{body{background:#fff!important;color:#111!important}.np{display:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback}=React;
+
+// ═══ MBTI ═══
+const P2_DIMS=["EI","SN","TF","JP","EI","SN","TF","JP","EI","SN","TF","JP","EI","SN","TF","JP","EI","SN","TF","JP"];
+const P2_KEYS=["2-1","2-2","2-3","2-4","2-5","2-6","2-7","2-8","2-9","2-10","2-11","2-12","2-13","2-14","2-15","2-16","2-17","2-18","2-19","2-20"];
+const SKIP=["타임스탬프","이름","날짜","소속","timestamp","name"];
+
+const SYS=`당신은 '프로젝트 내일로'의 수석 사례관리 전문가입니다.
+이 채팅방의 규칙 이름은 [오늘은 프로그램]입니다.
+사용자가 참여자의 설문 데이터와 함께 요청하면, 아래의 엄격한 규칙과 양식에 따라 정밀 분석 리포트를 출력하십시오.
+
+[기본 원칙]
+- 불필요한 인사말/서론 생략, 즉시 리포트 출력
+- 전문적이고 날카로운 통찰 + 참여자를 포용하는 따뜻한 어조
+- 마크다운 형식, 별표 두 개(아스테리스크 2연속) 절대 금지 → 밑줄 또는 인용구 사용
+
+[필수 구성]
+1. 참여자 성향 프로필 (DNA) — MBTI+에니어그램 결합 기질/위기 대처
+2. 인생 그래프 서사 (Story) — 트라우마, 위기 대처, 회복탄력성
+3. SWOT 역량 진단 — 표 형태
+4. IAP 자립지원 계획 — 1~3년 목표, 3가지 직무 경로, 위기 관리, 내일 할 일 3가지, 담당자 소통 가이드`;
+
+const GAS_CODE=`function doGet(e) {
+  var action = (e && e.parameter && e.parameter.action) || "data";
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (action === "login") {
+    var uid = (e.parameter.uid || "").trim();
+    var pwd = (e.parameter.pwd || "").trim();
+    var accSheet = ss.getSheetByName("계정");
+    if (!accSheet) return jsonOut({ success: false, error: "계정 시트가 없습니다." });
+    var accData = accSheet.getDataRange().getValues();
+    for (var i = 1; i < accData.length; i++) {
+      if (String(accData[i][0]).trim() === uid && String(accData[i][1]).trim() === pwd) {
+        return jsonOut({ success: true, user: { uid: uid, name: String(accData[i][2]), role: String(accData[i][3]) } });
+      }
+    }
+    return jsonOut({ success: false, error: "아이디 또는 비밀번호가 일치하지 않습니다." });
+  }
+  var sheet = ss.getSheets()[0];
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var result = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = {};
+    for (var j = 0; j < headers.length; j++) {
+      row[headers[j]] = data[i][j] !== undefined ? data[i][j].toString() : "";
+    }
+    result.push(row);
+  }
+  return jsonOut({ success: true, data: result, count: result.length, timestamp: new Date().toISOString() });
+}
+function jsonOut(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}`;
+
+// ═══ 내장 데이터 ═══
+const BUILT_IN=[
+  {"타임스탬프":"2026-03-14 09:23","이름":"김미영","날짜":"03/14/2026","소속":"느티나무식당","1. 문제가 생기면 나는":"B. 사람에게 먼저 말한다","2. 새로운 일을 시작할 때":"C. 먼저 알아본다","3. 결정을 해야 할 때":"B. 사람 의견을 듣는다","4. 일이 밀리면":"C. 계획을 다시 생각한다","5. 어려운 일이 생기면":"B. 사람에게 이야기한다","6. 해야 할 일이 많으면":"C. 무엇부터 할지 생각한다","7. 문제가 반복되면":"B. 사람에게 묻는다","8. 갑자기 일이 생기면":"B. 주변 사람을 본다","9. 계획이 바뀌면":"C. 생각이 많아진다","10. 누가 나를 비판하면":"B. 마음이 상한다","11. 화가 나면":"B. 마음이 아프다","12. 누가 나를 무시하면":"B. 속상하다","13. 힘든 일이 생기면":"B. 위로받고 싶다","14. 사람이 나를 싫어하면":"B. 마음이 아프다","15. 누가 화를 내면":"B. 마음이 불편하다","16. 칭찬을 들으면":"B. 기분이 좋다","17. 실수하면":"B. 미안한 마음이 든다","18. 걱정이 생기면":"B. 사람에게 말한다","19. 새 사람을 만나면":"B. 친해지려고 한다","20. 모임에서 나는":"B. 분위기를 본다","21. 사람이 힘들어 보이면":"B. 위로한다","22. 갈등이 생기면":"B. 관계가 걱정된다","23. 사람들이 나를 보면":"B. 정 많은 사람이라 한다","24. 친구가 고민하면":"B. 들어준다","25. 누가 나를 도와주면":"B. 고맙다고 말한다","26. 사람들과 있을 때":"B. 함께한다","27. 누가 규칙을 어기면":"B. 이해하려 한다","28. 일이 잘 안 되면":"B. 속상하다","29. 큰 변화가 생기면":"B. 주변 사람을 본다","30. 일이 많아지면":"B. 사람에게 말한다","31. 새 환경에 가면":"B. 사람을 본다","32. 긴장되면":"B. 마음이 불안하다","33. 갈등 상황에서":"B. 관계를 먼저 생각한다","34. 스트레스가 쌓이면":"B. 사람을 찾는다","35. 문제가 길어지면":"B. 마음이 힘들다","36. 새로운 기회가 오면":"B. 사람과 상의한다","2-1. 쉬는 날 더 편한 것":"A. 사람을 만나기","2-2. 설명을 들을 때 더 이해되는 것":"A. 바로 해볼 수 있게 보여주는 말","2-3. 다툼이 생기면 먼저 보는 것":"B. 누가 마음이 다쳤는가","2-4. 약속이 있으면 나는":"A. 미리 정해두는 게 편함","2-5. 기운이 없을 때 나는":"A. 사람과 있으면 힘이 남","2-6. 이야기를 들을 때 더 좋은 것":"A. 실제로 있었던 이야기","2-7. 누군가 실수했을 때 먼저 드는 생각":"B. 많이 당황했겠다는 생각이 듦","2-8. 일을 시작할 때 나는":"A. 순서를 정하고 시작함","2-9. 모임에 가면 나는":"A. 먼저 말을 하는 편","2-10. 문제를 볼 때 먼저 보는 것":"A. 눈앞에 보이는 문제","2-11. 결정을 할 때 중요한 것":"B. 사람 마음과 관계","2-12. 일정이 바뀌면 나는":"A. 불편한 편","2-13. 새로운 사람을 만나면 나는":"A. 금방 말을 하는 편","2-14. 일을 배울 때 더 좋은 것":"A. 예시를 바로 보여주는 것","2-15. 부탁을 받을 때 먼저 보는 것":"B. 그 사람이 얼마나 힘든가","2-16. 외출 준비를 할 때 나는":"A. 미리 챙겨두는 편","2-17. 힘든 일이 있으면 나는":"A. 먼저 누군가에게 말함","2-18. 대화할 때 더 편한 것":"A. 지금 있는 사실 이야기","2-19. 평가를 할 때 더 중요한 것":"B. 마음이 상하지 않았는가","2-20. 하루를 보낼 때 더 편한 것":"A. 계획이 있는 하루"},
+  {"타임스탬프":"2026-03-15 14:10","이름":"박준호","날짜":"03/15/2026","소속":"베니오유","1. 문제가 생기면 나는":"A. 바로 해결하려 한다","2. 새로운 일을 시작할 때":"A. 바로 시작한다","3. 결정을 해야 할 때":"A. 빨리 결정한다","4. 일이 밀리면":"A. 바로 처리한다","5. 어려운 일이 생기면":"A. 해결하려 움직인다","6. 해야 할 일이 많으면":"A. 하나씩 바로 한다","7. 문제가 반복되면":"A. 방법을 바꾼다","8. 갑자기 일이 생기면":"A. 바로 움직인다","9. 계획이 바뀌면":"A. 바로 맞춘다","10. 누가 나를 비판하면":"A. 바로 말한다","11. 화가 나면":"A. 표현한다","12. 누가 나를 무시하면":"A. 따진다","13. 힘든 일이 생기면":"A. 해결하려 한다","14. 사람이 나를 싫어하면":"A. 상관없다","15. 누가 화를 내면":"A. 나도 화가 난다","16. 칭찬을 들으면":"A. 괜찮다","17. 실수하면":"A. 바로 고친다","18. 걱정이 생기면":"A. 해결하려 한다","19. 새 사람을 만나면":"A. 먼저 말한다","20. 모임에서 나는":"A. 말이 많은 편이다","21. 사람이 힘들어 보이면":"A. 해결 방법을 말한다","22. 갈등이 생기면":"A. 바로 말한다","23. 사람들이 나를 보면":"A. 강한 사람이라 한다","24. 친구가 고민하면":"A. 해결 방법을 말한다","25. 누가 나를 도와주면":"A. 괜찮다고 한다","26. 사람들과 있을 때":"A. 내가 이끈다","27. 누가 규칙을 어기면":"A. 말한다","28. 일이 잘 안 되면":"A. 다시 시도한다","29. 큰 변화가 생기면":"A. 바로 적응한다","30. 일이 많아지면":"A. 더 움직인다","31. 새 환경에 가면":"A. 먼저 행동한다","32. 긴장되면":"A. 몸이 먼저 움직인다","33. 갈등 상황에서":"A. 바로 말한다","34. 스트레스가 쌓이면":"A. 일을 한다","35. 문제가 길어지면":"A. 해결하려 한다","36. 새로운 기회가 오면":"A. 바로 한다","2-1. 쉬는 날 더 편한 것":"A. 사람을 만나기","2-2. 설명을 들을 때 더 이해되는 것":"A. 바로 해볼 수 있게 보여주는 말","2-3. 다툼이 생기면 먼저 보는 것":"A. 누가 맞는가","2-4. 약속이 있으면 나는":"A. 미리 정해두는 게 편함","2-5. 기운이 없을 때 나는":"A. 사람과 있으면 힘이 남","2-6. 이야기를 들을 때 더 좋은 것":"A. 실제로 있었던 이야기","2-7. 누군가 실수했을 때 먼저 드는 생각":"A. 왜 그렇게 했는지 따져봐야 함","2-8. 일을 시작할 때 나는":"A. 순서를 정하고 시작함","2-9. 모임에 가면 나는":"A. 먼저 말을 하는 편","2-10. 문제를 볼 때 먼저 보는 것":"A. 눈앞에 보이는 문제","2-11. 결정을 할 때 중요한 것":"A. 사실과 기준","2-12. 일정이 바뀌면 나는":"A. 불편한 편","2-13. 새로운 사람을 만나면 나는":"A. 금방 말을 하는 편","2-14. 일을 배울 때 더 좋은 것":"A. 예시를 바로 보여주는 것","2-15. 부탁을 받을 때 먼저 보는 것":"A. 원칙에 맞는가","2-16. 외출 준비를 할 때 나는":"A. 미리 챙겨두는 편","2-17. 힘든 일이 있으면 나는":"A. 먼저 누군가에게 말함","2-18. 대화할 때 더 편한 것":"A. 지금 있는 사실 이야기","2-19. 평가를 할 때 더 중요한 것":"A. 결과가 맞는가","2-20. 하루를 보낼 때 더 편한 것":"A. 계획이 있는 하루"},
+  {"타임스탬프":"2026-03-16 11:45","이름":"이수진","날짜":"03/16/2026","소속":"다원","1. 문제가 생기면 나는":"C. 상황을 먼저 생각한다","2. 새로운 일을 시작할 때":"C. 먼저 알아본다","3. 결정을 해야 할 때":"C. 충분히 생각한다","4. 일이 밀리면":"C. 계획을 다시 생각한다","5. 어려운 일이 생기면":"C. 혼자 생각이 많아진다","6. 해야 할 일이 많으면":"C. 무엇부터 할지 생각한다","7. 문제가 반복되면":"C. 이유를 생각한다","8. 갑자기 일이 생기면":"C. 상황을 먼저 본다","9. 계획이 바뀌면":"C. 생각이 많아진다","10. 누가 나를 비판하면":"C. 이유를 생각한다","11. 화가 나면":"C. 혼자 생각한다","12. 누가 나를 무시하면":"C. 이유를 생각한다","13. 힘든 일이 생기면":"C. 생각이 많아진다","14. 사람이 나를 싫어하면":"C. 이유를 찾는다","15. 누가 화를 내면":"C. 조용히 생각한다","16. 칭찬을 들으면":"C. 왜 그런지 생각한다","17. 실수하면":"C. 오래 생각한다","18. 걱정이 생기면":"C. 계속 생각한다","19. 새 사람을 만나면":"C. 지켜본다","20. 모임에서 나는":"C. 듣는 편이다","21. 사람이 힘들어 보이면":"C. 조용히 지켜본다","22. 갈등이 생기면":"C. 생각한다","23. 사람들이 나를 보면":"C. 조심스러운 사람이라 한다","24. 친구가 고민하면":"C. 생각하게 한다","25. 누가 나를 도와주면":"C. 왜 도와줬는지 생각한다","26. 사람들과 있을 때":"C. 지켜본다","27. 누가 규칙을 어기면":"C. 이유를 생각한다","28. 일이 잘 안 되면":"C. 생각이 많아진다","29. 큰 변화가 생기면":"C. 걱정이 많다","30. 일이 많아지면":"C. 머리가 복잡하다","31. 새 환경에 가면":"C. 조용히 본다","32. 긴장되면":"C. 생각이 많아진다","33. 갈등 상황에서":"C. 상황을 분석한다","34. 스트레스가 쌓이면":"C. 혼자 생각한다","35. 문제가 길어지면":"C. 생각이 많아진다","36. 새로운 기회가 오면":"C. 충분히 생각한다","2-1. 쉬는 날 더 편한 것":"B. 혼자 쉬기","2-2. 설명을 들을 때 더 이해되는 것":"B. 왜 그런지 뜻을 알려주는 말","2-3. 다툼이 생기면 먼저 보는 것":"A. 누가 맞는가","2-4. 약속이 있으면 나는":"B. 가까워져서 정하는 게 편함","2-5. 기운이 없을 때 나는":"B. 혼자 있으면 힘이 남","2-6. 이야기를 들을 때 더 좋은 것":"B. 앞으로 해볼 수 있는 이야기","2-7. 누군가 실수했을 때 먼저 드는 생각":"A. 왜 그렇게 했는지 따져봐야 함","2-8. 일을 시작할 때 나는":"B. 하면서 정함","2-9. 모임에 가면 나는":"B. 먼저 듣는 편","2-10. 문제를 볼 때 먼저 보는 것":"B. 다른 방법이 있을지","2-11. 결정을 할 때 중요한 것":"A. 사실과 기준","2-12. 일정이 바뀌면 나는":"B. 괜찮은 편","2-13. 새로운 사람을 만나면 나는":"B. 천천히 말을 하는 편","2-14. 일을 배울 때 더 좋은 것":"B. 전체 뜻을 먼저 말해주는 것","2-15. 부탁을 받을 때 먼저 보는 것":"A. 원칙에 맞는가","2-16. 외출 준비를 할 때 나는":"B. 나갈 때 챙기는 편","2-17. 힘든 일이 있으면 나는":"B. 혼자 생각한 뒤 말함","2-18. 대화할 때 더 편한 것":"B. 앞으로의 가능성 이야기","2-19. 평가를 할 때 더 중요한 것":"A. 결과가 맞는가","2-20. 하루를 보낼 때 더 편한 것":"B. 상황 따라 바꾸는 하루"}
+];
+
+// ═══ 유틸 ═══
+function mdToHtml(md){if(!md)return"";let h=md.replace(/^(\|.+\|)\n(\|[-:\s|]+\|)\n((?:\|.+\|\n?)*)/gm,(_,hd,sp,bd)=>{const hC=hd.split("|").filter(c=>c.trim()),bR=bd.trim().split("\n").filter(r=>r.trim());let t='<div class="tw"><table><thead><tr>';hC.forEach(c=>t+=`<th>${c.trim()}</th>`);t+="</tr></thead><tbody>";bR.forEach(r=>{const cs=r.split("|").filter(c=>c.trim());t+="<tr>";cs.forEach(c=>t+=`<td>${c.trim()}</td>`);t+="</tr>";});return t+"</tbody></table></div>";}).replace(/^#### (.+)$/gm,'<h4>$1</h4>').replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>').replace(/__(.+?)__/g,'<u>$1</u>').replace(/_(.+?)_/g,'<em>$1</em>').replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br/>');h=h.replace(/(?:^|<br\/>)- (.+?)(?=<br\/>|- |<\/p>|$)/g,'<li>$1</li>');h=h.replace(/(<li>.*?<\/li>)+/gs,'<ul>$&</ul>');return`<p>${h}</p>`;}
+function parseTSV(raw){const ls=raw.trim().split("\n").filter(l=>l.trim());if(ls.length<2)return[];const sep=ls[0].includes("\t")?"\t":",";const hd=ls[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,""));return ls.slice(1).map(l=>{const cs=l.split(sep).map(c=>c.trim().replace(/^"|"$/g,""));const o={};hd.forEach((h,i)=>{o[h]=cs[i]||""});return o}).filter(o=>Object.values(o).some(v=>v));}
+
+function processRow(row,id){
+  let name="",date="",dept="";
+  Object.keys(row).forEach(k=>{const kl=k.toLowerCase();if(kl.includes("이름")||kl==="name")name=String(row[k]);else if(kl.includes("날짜")||kl.includes("timestamp")||kl.includes("타임"))date=String(row[k]);else if(kl.includes("소속")||kl.includes("부서"))dept=String(row[k]);});
+  let text=`[참여자 정보]\n이름: ${name}\n날짜: ${date}\n소속: ${dept}\n\n[설문 응답]\n`;
+  Object.keys(row).forEach(k=>{if(SKIP.some(s=>k.toLowerCase().includes(s)))return;if(row[k])text+=`${k}: ${row[k]}\n`;});
+  let A=0,B=0,C2=0;Object.values(row).forEach(v=>{const s=String(v).trim();if(s.startsWith("A"))A++;else if(s.startsWith("B"))B++;else if(s.startsWith("C"))C2++;});
+  const dims={EI:{A:0,B:0},SN:{A:0,B:0},TF:{A:0,B:0},JP:{A:0,B:0}};
+  P2_KEYS.forEach((pk,i)=>{const m=Object.keys(row).find(k=>k.includes(pk));if(m&&P2_DIMS[i]){const v=String(row[m]).trim();if(v.startsWith("A"))dims[P2_DIMS[i]].A++;else if(v.startsWith("B"))dims[P2_DIMS[i]].B++;}});
+  const mbti=(dims.EI.A>=dims.EI.B?"E":"I")+(dims.SN.A>=dims.SN.B?"S":"N")+(dims.TF.A>=dims.TF.B?"T":"F")+(dims.JP.A>=dims.JP.B?"J":"P");
+  text+=`\n[자동 산출]\nMBTI: ${mbti}\n행동유형: A${A} B${B} C${C2}\n`;
+  return{id,name,date,dept,text,mbti,A,B,C:C2,raw:row};
+}
+
+// ═══ 색상/컴포넌트 ═══
+const X={bg:"#0F1419",card:"#1A2332",accent:"#3B82F6",aS:"#1E3A5F",warm:"#F59E0B",wS:"#3D2F0A",text:"#E2E8F0",dim:"#8899AA",bdr:"#2A3A4E",ok:"#10B981",err:"#EF4444"};
+const Btn=({children,onClick,color=X.accent,bg=X.aS,s={}})=>React.createElement('button',{onClick,style:{padding:"7px 16px",background:bg,border:`1px solid ${color}`,borderRadius:8,color,cursor:"pointer",fontSize:12,fontWeight:500,...s}},children);
+const Spin=({msg})=>React.createElement('div',{style:{position:"fixed",inset:0,background:"rgba(15,20,25,.92)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:100}},React.createElement('div',{style:{width:56,height:56,border:`3px solid ${X.bdr}`,borderTopColor:X.accent,borderRadius:"50%",animation:"sp 1s linear infinite"}}),React.createElement('p',{style:{marginTop:20,color:X.text,fontSize:15,fontWeight:500}},msg),React.createElement('p',{style:{color:X.dim,fontSize:12,marginTop:6}},"잠시만 기다려 주세요"));
+const TopBar=({left,right})=>React.createElement('div',{className:"np",style:{background:X.card,borderBottom:`1px solid ${X.bdr}`,padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:10}},left,right);
+
+// ═══ 메인 앱 (이전 JSX 아티팩트와 동일 로직) ═══
+function App(){
+  const[loggedIn,setLoggedIn]=useState(false);
+  const[user,setUser]=useState(null);
+  const[loginId,setLoginId]=useState("");
+  const[loginPw,setLoginPw]=useState("");
+  const[loginError,setLoginError]=useState("");
+  const[loginLoading,setLoginLoading]=useState(false);
+  const[gasUrl,setGasUrl]=useState("");
+  const[gasInput,setGasInput]=useState("");
+  const[page,setPage]=useState("list");
+  const[rawData,setRawData]=useState("");
+  const[participants,setParticipants]=useState(()=>BUILT_IN.map((r,i)=>processRow(r,i)));
+  const[selected,setSelected]=useState(null);
+  const[report,setReport]=useState("");
+  const[reports,setReports]=useState({});
+  const[loading,setLoading]=useState(false);
+  const[fetching,setFetching]=useState(false);
+  const[error,setError]=useState("");
+  const[search,setSearch]=useState("");
+  const[autoRefresh,setAutoRefresh]=useState(false);
+  const[lastFetch,setLastFetch]=useState(null);
+  const[newIds,setNewIds]=useState(new Set());
+  const[showSettings,setShowSettings]=useState(false);
+  const[dataSource,setDataSource]=useState("builtin");
+
+  async function handleLogin(){
+    if(!loginId.trim()||!loginPw.trim()){setLoginError("아이디와 비밀번호를 입력해 주세요.");return;}
+    if(gasInput.trim()){
+      setLoginLoading(true);setLoginError("");
+      try{const url=`${gasInput.trim()}?action=login&uid=${encodeURIComponent(loginId)}&pwd=${encodeURIComponent(loginPw)}`;
+        const r=await fetch(url);const j=await r.json();
+        if(j.success){setUser(j.user);setLoggedIn(true);setGasUrl(gasInput.trim());fetchGAS(gasInput.trim());}
+        else setLoginError(j.error||"로그인 실패");
+      }catch(e){setLoginError("서버 연결 오류: "+e.message);}finally{setLoginLoading(false);}
+    }else{
+      if(loginId==="admin"&&loginPw==="naeillo2026"){setUser({uid:"admin",name:"관리자",role:"admin"});setLoggedIn(true);}
+      else setLoginError("GAS URL 미설정. 기본 계정(admin)으로 로그인하거나 GAS URL을 입력하세요.");
+    }
+  }
+  function handleLogout(){setLoggedIn(false);setUser(null);setLoginId("");setLoginPw("");setLoginError("");setPage("list");setShowSettings(false);}
+
+  const fetchGAS=useCallback(async(url,silent=false)=>{
+    if(!url)return;if(!silent)setFetching(true);setError("");
+    try{const r=await fetch(url+"?action=data");const j=await r.json();
+      if(j.success&&j.data){const parsed=j.data.map((row,i)=>processRow(row,i));
+        if(participants.length>0&&parsed.length>participants.length){const ns=new Set();for(let i=participants.length;i<parsed.length;i++)ns.add(i);setNewIds(ns);setTimeout(()=>setNewIds(new Set()),8000);}
+        setParticipants(parsed);setLastFetch(new Date());setDataSource("gas");if(!silent)setShowSettings(false);
+      }else setError("데이터를 가져오지 못했습니다.");
+    }catch(e){setError("GAS 연결 오류: "+e.message);}finally{setFetching(false);}
+  },[participants.length]);
+
+  useEffect(()=>{if(!autoRefresh||!gasUrl||dataSource!=="gas")return;const iv=setInterval(()=>fetchGAS(gasUrl,true),60000);return()=>clearInterval(iv);},[autoRefresh,gasUrl,dataSource,fetchGAS]);
+
+  function handlePaste(){if(!rawData.trim()){setError("데이터를 붙여넣어 주세요.");return;}const rows=parseTSV(rawData);if(!rows.length){setError("파싱 실패");return;}setParticipants(rows.map((r,i)=>processRow(r,i)));setReports({});setDataSource("paste");setShowSettings(false);setError("");}
+
+  async function runAnalysis(p){
+    if(reports[p.id]){setReport(reports[p.id]);setSelected(p);setPage("report");return;}
+    setLoading(true);setError("");setSelected(p);
+    try{const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,system:SYS,messages:[{role:"user",content:`다음 참여자의 설문 응답 데이터를 분석하여 "오늘은 프로그램" 리포트를 작성해 주십시오.\n\n${p.text}`}]})});
+      const d=await r.json();const txt=d.content?.map(b=>b.text||"").join("\n")||"분석 실패";
+      setReports(prev=>({...prev,[p.id]:txt}));setReport(txt);setPage("report");
+    }catch(e){setError("API 오류: "+e.message);}finally{setLoading(false);}
+  }
+
+  const filtered=participants.filter(p=>!search||(p.name||"").includes(search)||(p.dept||"").includes(search));
+  const srcLabel={builtin:"내장 데이터",gas:"Google Forms 연동",paste:"수동 붙여넣기"}[dataSource];
+
+  // ═══ 로그인 화면 ═══
+  if(!loggedIn){
+    return(<div style={{minHeight:"100vh",background:`linear-gradient(135deg,${X.bg} 0%,#141E2E 50%,#0D1520 100%)`,fontFamily:"'Noto Sans KR',sans-serif",color:X.text,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{width:"100%",maxWidth:420,padding:"0 20px"}}>
+        <div style={{textAlign:"center",marginBottom:36}}>
+          <div style={{width:72,height:72,background:`linear-gradient(135deg,${X.accent},${X.warm})`,borderRadius:20,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:32,marginBottom:16}}>🔐</div>
+          <h1 style={{fontSize:28,fontWeight:700}}>프로젝트 <span style={{color:X.warm}}>내일로</span></h1>
+          <p style={{fontSize:14,color:X.dim,marginTop:4}}>오늘은 프로그램 · AI 분석 시스템</p>
+          <div style={{fontSize:11,color:X.dim,marginTop:2}}>충북청주지역자활센터</div>
+        </div>
+        <div style={{background:X.card,border:`1px solid ${X.bdr}`,borderRadius:16,padding:28}}>
+          <h2 style={{fontSize:17,fontWeight:600,marginBottom:20,textAlign:"center"}}>로그인</h2>
+          <div style={{marginBottom:14}}>
+            <label style={{fontSize:12,color:X.dim,display:"block",marginBottom:5}}>아이디</label>
+            <input value={loginId} onChange={e=>{setLoginId(e.target.value);setLoginError("");}} placeholder="아이디" onKeyDown={e=>{if(e.key==="Enter")handleLogin();}}
+              style={{width:"100%",padding:"12px 14px",background:X.bg,border:`1px solid ${X.bdr}`,borderRadius:10,color:X.text,fontSize:14,outline:"none"}}/>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={{fontSize:12,color:X.dim,display:"block",marginBottom:5}}>비밀번호</label>
+            <input type="password" value={loginPw} onChange={e=>{setLoginPw(e.target.value);setLoginError("");}} placeholder="비밀번호" onKeyDown={e=>{if(e.key==="Enter")handleLogin();}}
+              style={{width:"100%",padding:"12px 14px",background:X.bg,border:`1px solid ${X.bdr}`,borderRadius:10,color:X.text,fontSize:14,outline:"none"}}/>
+          </div>
+          <details style={{marginBottom:16}}>
+            <summary style={{cursor:"pointer",fontSize:12,color:X.dim}}>📡 GAS 서버 URL 설정 (선택)</summary>
+            <div style={{marginTop:8}}>
+              <input value={gasInput} onChange={e=>setGasInput(e.target.value)} placeholder="https://script.google.com/macros/s/.../exec"
+                style={{width:"100%",padding:"10px 12px",background:X.bg,border:`1px solid ${X.bdr}`,borderRadius:8,color:X.text,fontSize:12,outline:"none"}}/>
+              <p style={{fontSize:11,color:X.dim,marginTop:6,lineHeight:1.6}}>GAS URL 입력 시 스프레드시트 "계정" 시트로 인증.<br/>미입력 시 기본 계정(admin)으로 로그인.</p>
+            </div>
+          </details>
+          {loginError&&<div style={{color:X.err,fontSize:13,marginBottom:12,padding:"8px 12px",background:X.err+"15",borderRadius:8}}>{loginError}</div>}
+          <button onClick={handleLogin} disabled={loginLoading}
+            style={{width:"100%",padding:14,background:`linear-gradient(135deg,${X.accent},${X.warm})`,border:"none",borderRadius:12,color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer",opacity:loginLoading?.7:1}}>
+            {loginLoading?"인증 중...":"로그인"}</button>
+        </div>
+        <details style={{marginTop:20}}>
+          <summary style={{cursor:"pointer",fontSize:13,color:X.dim,textAlign:"center"}}>처음 사용하시나요? 설정 안내</summary>
+          <div style={{background:X.card,border:`1px solid ${X.bdr}`,borderRadius:12,padding:18,marginTop:10,fontSize:12,color:X.dim,lineHeight:1.9}}>
+            <div style={{color:X.warm,fontWeight:600,marginBottom:8}}>스프레드시트 설정</div>
+            ① Forms 응답 스프레드시트 열기<br/>② <span style={{color:X.accent}}>"계정"</span> 시트 만들기<br/>③ 아이디|비밀번호|이름|권한 형식 입력<br/>④ Apps Script → 코드 붙여넣기 → 웹앱 배포
+            <details style={{marginTop:10}}><summary style={{cursor:"pointer",color:X.accent}}>📎 Apps Script 코드</summary>
+              <pre style={{background:"#0D1117",border:`1px solid ${X.bdr}`,borderRadius:8,padding:12,fontSize:10,lineHeight:1.5,color:"#7EE787",overflow:"auto",maxHeight:200,marginTop:6,whiteSpace:"pre-wrap"}}>{GAS_CODE}</pre>
+            </details>
+          </div>
+        </details>
+      </div>
+    </div>);
+  }
+
+  // ═══ 참여자 목록 ═══
+  if(page==="list"){const ac=Object.keys(reports).length;
+    return(<div style={{minHeight:"100vh",background:X.bg,fontFamily:"'Noto Sans KR',sans-serif",color:X.text}}>
+      <div style={{background:X.card,borderBottom:`1px solid ${X.bdr}`,padding:"14px 20px"}}>
+        <div style={{maxWidth:860,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+          <div><h1 style={{fontSize:20,fontWeight:700}}>프로젝트 <span style={{color:X.warm}}>내일로</span> <span style={{fontSize:13,color:X.dim,fontWeight:400}}>· 오늘은 프로그램</span></h1>
+            <div style={{fontSize:11,color:X.dim,marginTop:2}}>{user?.name}({user?.uid}) · {srcLabel}{lastFetch&&<span> · {lastFetch.toLocaleTimeString("ko-KR")}</span>}</div></div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {dataSource==="gas"&&gasUrl&&<><div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:4,background:autoRefresh?X.ok:X.dim,animation:autoRefresh?"pu 2s infinite":"none"}}/></div>
+              <Btn onClick={()=>setAutoRefresh(!autoRefresh)} color={autoRefresh?X.ok:X.dim} bg="transparent">{autoRefresh?"⏸":"▶"}</Btn>
+              <Btn onClick={()=>fetchGAS(gasUrl,true)}>{fetching?"...":"🔄"}</Btn></>}
+            <Btn onClick={()=>setShowSettings(!showSettings)} color={X.warm} bg={X.wS}>⚙</Btn>
+            <Btn onClick={handleLogout} color={X.err} bg="transparent">로그아웃</Btn></div></div></div>
+      <div style={{maxWidth:860,margin:"0 auto",padding:"20px 20px 80px"}}>
+        {showSettings&&<div style={{background:X.card,border:`1px solid ${X.bdr}`,borderRadius:14,padding:24,marginBottom:20}}>
+          <h3 style={{fontSize:16,fontWeight:600,marginBottom:16}}>데이터 소스</h3>
+          {gasUrl&&<div style={{background:X.ok+"15",border:`1px solid ${X.ok}44`,borderRadius:8,padding:"10px 14px",marginBottom:12,fontSize:12,color:X.ok}}>✓ GAS 연동 활성</div>}
+          {!gasUrl&&<div style={{background:X.bg,border:`1px solid ${X.bdr}`,borderRadius:10,padding:16,marginBottom:12}}>
+            <div style={{fontSize:13,fontWeight:600,color:X.accent,marginBottom:8}}>📡 GAS 연동</div>
+            <input value={gasInput} onChange={e=>setGasInput(e.target.value)} placeholder="https://script.google.com/macros/s/.../exec"
+              style={{width:"100%",padding:"10px 12px",background:X.card,border:`1px solid ${X.bdr}`,borderRadius:8,color:X.text,fontSize:12,outline:"none"}}/>
+            <button onClick={()=>{if(gasInput.trim()){setGasUrl(gasInput.trim());fetchGAS(gasInput.trim());}}} style={{marginTop:8,padding:"8px 16px",background:X.accent,border:"none",borderRadius:8,color:"#fff",fontSize:12,cursor:"pointer"}}>연동</button></div>}
+          <div style={{background:X.bg,border:`1px solid ${X.bdr}`,borderRadius:10,padding:16}}>
+            <div style={{fontSize:13,fontWeight:600,color:X.warm,marginBottom:8}}>📋 수동 붙여넣기</div>
+            <textarea value={rawData} onChange={e=>setRawData(e.target.value)} placeholder="스프레드시트 데이터"
+              style={{width:"100%",minHeight:100,padding:10,background:X.card,border:`1px solid ${X.bdr}`,borderRadius:8,color:X.text,fontSize:11,resize:"vertical",outline:"none",fontFamily:"monospace"}}/>
+            <button onClick={handlePaste} style={{marginTop:8,padding:"8px 16px",background:X.warm,border:"none",borderRadius:8,color:"#000",fontSize:12,cursor:"pointer"}}>불러오기</button></div>
+          {error&&<div style={{color:X.err,fontSize:13,marginTop:10}}>{error}</div>}</div>}
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="이름 또는 소속 검색..."
+          style={{width:"100%",padding:"12px 16px",background:X.card,border:`1px solid ${X.bdr}`,borderRadius:10,color:X.text,fontSize:14,outline:"none",marginBottom:16}}/>
+        <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+          {[{l:"전체",v:participants.length,u:"명",c:X.accent},{l:"분석완료",v:ac,u:"명",c:X.ok},{l:"행동형↗",v:participants.length?Math.round(participants.reduce((s,p)=>s+p.A,0)/participants.length):0,c:X.accent},{l:"관계형↗",v:participants.length?Math.round(participants.reduce((s,p)=>s+p.B,0)/participants.length):0,c:X.warm}].map(it=>
+            <div key={it.l} style={{flex:"1 1 140px",background:X.card,border:`1px solid ${X.bdr}`,borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+              <div style={{fontSize:11,color:X.dim}}>{it.l}</div><div style={{fontSize:22,fontWeight:700,color:it.c,marginTop:2}}>{it.v}{it.u&&<span style={{fontSize:11,color:X.dim}}> {it.u}</span>}</div></div>)}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {filtered.map(p=>{const done=!!reports[p.id],isNew=newIds.has(p.id);
+            return <div key={p.id} style={{background:isNew?X.wS:X.card,border:`1px solid ${isNew?X.warm:done?X.ok+"44":X.bdr}`,borderRadius:12,padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,transition:"all .3s",animation:isNew?"fi .5s ease":"none"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,flex:"1 1 200px"}}>
+                <div style={{position:"relative"}}>
+                  <div style={{width:40,height:40,borderRadius:10,background:done?X.ok+"22":X.aS,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:done?X.ok:X.accent,fontWeight:700}}>{done?"✓":p.name?.charAt(0)||"?"}</div>
+                  {isNew&&<div style={{position:"absolute",top:-4,right:-4,width:14,height:14,borderRadius:7,background:X.warm,border:`2px solid ${X.bg}`,fontSize:7,color:"#000",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>N</div>}</div>
+                <div><div style={{fontSize:15,fontWeight:600}}>{p.name||`참여자 ${p.id+1}`}{isNew&&<span style={{marginLeft:8,fontSize:11,color:X.warm}}>NEW</span>}</div>
+                  <div style={{fontSize:12,color:X.dim,marginTop:1}}>{p.dept&&<span>{p.dept} · </span>}MBTI {p.mbti} · A:{p.A} B:{p.B} C:{p.C}</div></div></div>
+              <div style={{display:"flex",gap:6}}>
+                <Btn onClick={()=>{setSelected(p);setPage("raw");}} color={X.dim} bg="transparent">응답</Btn>
+                <Btn onClick={()=>runAnalysis(p)} color={done?X.ok:X.accent} bg={done?X.ok+"18":X.aS}>{done?"리포트":"AI 분석"}</Btn></div></div>;})}
+        </div>
+        {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:X.dim}}>검색 결과 없음</div>}</div>
+      {loading&&<Spin msg={`${selected?.name||"참여자"} 님 분석 중...`}/>}</div>);
+  }
+
+  // ═══ 응답 원문 ═══
+  if(page==="raw"&&selected){const keys=Object.keys(selected.raw);
+    return(<div style={{minHeight:"100vh",background:X.bg,fontFamily:"'Noto Sans KR',sans-serif",color:X.text}}>
+      <TopBar left={<button onClick={()=>setPage("list")} style={{background:"none",border:"none",color:X.dim,cursor:"pointer",fontSize:14}}>← 목록</button>}
+              right={<Btn onClick={()=>runAnalysis(selected)} color={X.warm} bg={X.wS}>AI 분석</Btn>}/>
+      <div style={{maxWidth:800,margin:"0 auto",padding:"28px 20px"}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <h2 style={{fontSize:22,fontWeight:600}}>{selected.name||`참여자 ${selected.id+1}`} 님 응답</h2>
+          <p style={{fontSize:13,color:X.dim,marginTop:4}}>{selected.dept&&`${selected.dept} · `}MBTI {selected.mbti} · A:{selected.A} B:{selected.B} C:{selected.C}</p></div>
+        <div style={{background:X.card,border:`1px solid ${X.bdr}`,borderRadius:12,padding:20,marginBottom:20}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>행동 유형 분포</div>
+          {[{l:"행동형(A)",v:selected.A,c:X.accent},{l:"관계형(B)",v:selected.B,c:X.warm},{l:"사고형(C)",v:selected.C,c:X.ok}].map(it=>
+            <div key={it.l} style={{marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:X.dim,marginBottom:4}}><span>{it.l}</span><span>{it.v}/36</span></div>
+              <div style={{height:8,background:X.bdr,borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:`${(it.v/36)*100}%`,background:it.c,borderRadius:4,transition:"width .5s"}}/></div></div>)}</div>
+        <div style={{background:X.card,border:`1px solid ${X.bdr}`,borderRadius:12,overflow:"hidden"}}>
+          {keys.map((k,i)=><div key={i} style={{display:"flex",borderBottom:i<keys.length-1?`1px solid ${X.bdr}`:"none"}}>
+            <div style={{flex:"0 0 42%",padding:"11px 14px",fontSize:13,fontWeight:500,background:i%2?`rgba(26,35,50,.3)`:"transparent",borderRight:`1px solid ${X.bdr}`,wordBreak:"break-word"}}>{k}</div>
+            <div style={{flex:1,padding:"11px 14px",fontSize:13,color:X.dim,background:i%2?`rgba(26,35,50,.3)`:"transparent",wordBreak:"break-word"}}>{String(selected.raw[k])||"—"}</div></div>)}</div></div>
+      {loading&&<Spin msg={`${selected.name} 분석 중...`}/>}</div>);
+  }
+
+  // ═══ 리포트 ═══
+  if(page==="report"&&selected){
+    return(<div style={{minHeight:"100vh",background:X.bg,fontFamily:"'Noto Sans KR',sans-serif",color:X.text}}>
+      <style>{`.rc h1{font-size:24px;font-weight:700;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid ${X.accent};color:${X.warm}}.rc h2{font-size:20px;font-weight:600;margin:28px 0 12px;color:${X.accent}}.rc h3{font-size:17px;font-weight:600;margin:22px 0 10px}.rc h4{font-size:15px;font-weight:600;margin:18px 0 8px;color:${X.dim}}.rc p{line-height:1.85;margin-bottom:12px;font-size:14px}.rc blockquote{border-left:3px solid ${X.warm};padding:12px 16px;margin:16px 0;background:${X.wS};border-radius:0 8px 8px 0;font-style:italic}.rc ul{padding-left:20px;margin:8px 0}.rc li{line-height:1.85;font-size:14px;margin-bottom:4px}.rc u{text-decoration:underline;text-underline-offset:3px;color:${X.warm}}.tw{overflow-x:auto;margin:16px 0}.rc table{width:100%;border-collapse:collapse;font-size:13px}.rc th{background:${X.aS};color:${X.accent};padding:10px 14px;text-align:left;font-weight:600;border:1px solid ${X.bdr}}.rc td{padding:10px 14px;border:1px solid ${X.bdr};line-height:1.6}.rc tr:nth-child(even) td{background:rgba(26,35,50,.5)}`}</style>
+      <TopBar left={<button onClick={()=>setPage("list")} style={{background:"none",border:"none",color:X.dim,cursor:"pointer",fontSize:14}}>← 목록</button>}
+              right={<div style={{display:"flex",gap:8}}>
+                <Btn onClick={()=>{setSelected(selected);setPage("raw");}} color={X.dim} bg="transparent">응답</Btn>
+                <Btn onClick={()=>window.print()}>인쇄</Btn>
+                {selected.id>0&&<Btn onClick={()=>runAnalysis(participants[selected.id-1])} color={X.dim} bg="transparent">◀</Btn>}
+                {selected.id<participants.length-1&&<Btn onClick={()=>runAnalysis(participants[selected.id+1])} color={X.dim} bg="transparent">▶</Btn>}</div>}/>
+      <div style={{maxWidth:820,margin:"0 auto",padding:"28px 24px"}}>
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <div style={{display:"inline-block",padding:"4px 14px",background:X.wS,borderRadius:16,fontSize:12,color:X.warm,marginBottom:10}}>프로젝트 내일로 · 오늘은 프로그램</div>
+          <h1 style={{fontSize:26,fontWeight:700,margin:"8px 0"}}>{selected.name||`참여자 ${selected.id+1}`} 님의 AI 분석 리포트</h1>
+          <p style={{color:X.dim,fontSize:13}}>{selected.dept&&`${selected.dept} · `}{selected.date||new Date().toLocaleDateString("ko-KR")}</p></div>
+        <div style={{display:"flex",gap:12,marginBottom:26,flexWrap:"wrap"}}>
+          <div style={{flex:"1 1 140px",background:X.card,border:`1px solid ${X.bdr}`,borderRadius:12,padding:16,textAlign:"center"}}>
+            <div style={{fontSize:11,color:X.dim,marginBottom:4}}>MBTI</div><div style={{fontSize:26,fontWeight:700,color:X.accent,letterSpacing:2}}>{selected.mbti}</div></div>
+          {[{l:"행동형(A)",v:selected.A,c:X.accent},{l:"관계형(B)",v:selected.B,c:X.warm},{l:"사고형(C)",v:selected.C,c:X.ok}].map(it=>
+            <div key={it.l} style={{flex:"1 1 100px",background:X.card,border:`1px solid ${X.bdr}`,borderRadius:12,padding:16,textAlign:"center"}}>
+              <div style={{fontSize:11,color:X.dim,marginBottom:4}}>{it.l}</div><div style={{fontSize:24,fontWeight:700,color:it.c}}>{it.v}</div></div>)}</div>
+        <div className="rc" style={{background:X.card,border:`1px solid ${X.bdr}`,borderRadius:16,padding:"32px 28px",lineHeight:1.85}} dangerouslySetInnerHTML={{__html:mdToHtml(report)}}/></div>
+      {loading&&<Spin msg="분석 중..."/>}</div>);
+  }
+  return null;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
