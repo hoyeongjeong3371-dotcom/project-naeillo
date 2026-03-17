@@ -200,7 +200,7 @@ function App(){
           <details style={{marginBottom:16}}>
             <summary style={{cursor:"pointer",fontSize:12,color:X.dim}}>📡 GAS 서버 URL 설정 (선택)</summary>
             <div style={{marginTop:8}}>
-              <input value={gasInput} onChange={e=>setGasInput(e.target.value)} placeholder="https://script.google.com/macros/s/.../exec"
+              <input value={gasInput} onChange={e=>setGasInput(e.target.value)} placeholder="https://script.google.com/macros/s/AKfycbzxlms-9cIrrQhS_9SK-Q4LW5m-s7uNSaTFT6bruuzMF686sM51pSg08BrylJMIm4Ls/exec"
                 style={{width:"100%",padding:"10px 12px",background:X.bg,border:`1px solid ${X.bdr}`,borderRadius:8,color:X.text,fontSize:12,outline:"none"}}/>
               <p style={{fontSize:11,color:X.dim,marginTop:6,lineHeight:1.6}}>GAS URL 입력 시 스프레드시트 "계정" 시트로 인증.<br/>미입력 시 기본 계정(admin)으로 로그인.</p>
             </div>
